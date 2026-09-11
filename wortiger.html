@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worttiger</title>
+    <!-- Canvas-Confetti Bibliothek -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --correct-color: #6aaa64;
+            --present-color: #c9b458;
+            --absent-color: #787c7e;
+            --tile-border: #878a8c;
+            --primary-color: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: url("Unbenanntes_Projekt.jpeg");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #2c3e50;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* Header Bereich */
+        #header-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            text-align: center;
+            margin-bottom: 25px;
+            z-index: 10;
+            max-width: 600px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        h1 { margin: 0 0 5px 0; font-size: 2rem; }
+        
+        #subtitle { 
+            margin: 0; 
+            color: #444; 
+            font-weight: 500;
+        }
+
+        /* Spielfeld Container */
+        #game-board-wrapper {
+            position: relative;
+            background: rgba(255, 255, 255, 0.92);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            backdrop-filter: blur(5px);
+            z-index: 2;
+        }
+
+        #game-board {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tile {
+            width: 50px;
+            height: 50px;
+            border: 2px solid var(--tile-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 8px;
+            background-color: white;
+            user-select: none;
+            transition: transform 0.1s ease, background-color 0.2s ease;
+        }
+
+        .tile.filled {
+            border-color: #333;
+            transform: scale(1.03);
+        }
+
+        .tile.correct {
+            background-color: var(--correct-color) !important;
+            border-color: var(--correct-color) !important;
+            color: white;
+        }
+
+        .tile.present {
+            background-color: var(--present-color) !important;
+            border-color: var(--present-color) !important;
+            color: white;
+        }
+
+        .tile.absent {
+            background-color: var(--absent-color) !important;
+            border-color: var(--absent-color) !important;
+            color: white;
+        }
+
+        /* Fehlermeldung */
+        #message-container {
+            display: none;
+            font-weight: bold;
+            margin-top: 15px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 18px;
+            border-radius: 10px;
+            z-index: 10;
+            color: #e74c3c;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Gewonnen-Design */
+        .header-success {
+            background: rgba(212, 237, 218, 0.98) !important;
+            border: 2px solid #2ecc71;
+            color: #155724;
+            transform: scale(1.03);
+        }
+
+        .station-hint {
+            margin-top: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header-box">
+        <h1 id="main-title">Worttiger</h1>
+        <p id="subtitle">Errate das gesuchte Wort! Tippe deine Versuche auf der Tastatur ein.</p>
+    </div>
+
+    <div id="game-board-wrapper">
+        <div id="game-board"></div>
+    </div>
+
+    <div id="message-container"></div>
+
+    <script>
+        const CONFIG = {
+            targetWord: "KERAMIK",
+            maxAttempts: 6
+        };
+
+        const TARGET_WORD = CONFIG.targetWord.toUpperCase();
+        const WORD_LENGTH = TARGET_WORD.length;
+        const MAX_ATTEMPTS = CONFIG.maxAttempts;
+
+        let currentAttempt = 0;
+        let currentGuess = "";
+        let gameOver = false;
+
+        const boardEl = document.getElementById('game-board');
+        const msgEl = document.getElementById('message-container');
+        const headerBox = document.getElementById('header-box');
+        const mainTitle = document.getElementById('main-title');
+        const subtitle = document.getElementById('subtitle');
+
+        function initGame() {
+            for (let i = 0; i < MAX_ATTEMPTS; i++) {
+                const row = document.createElement('div');
+                row.classList.add('row');
+                
+                for (let j = 0; j < WORD_LENGTH; j++) {
+                    const tile = document.createElement('div');
+                    tile.classList.add('tile');
+                    row.appendChild(tile);
+                }
+                boardEl.appendChild(row);
+            }
+
+            document.addEventListener('keydown', handleKeyDown);
+        }
+
+        function handleKeyDown(e) {
+            if (gameOver) return;
+
+            const key = e.key;
+
+            if (key === 'Enter') {
+                submitGuess();
+            } else if (key === 'Backspace') {
+                removeLetter();
+            } else if (/^[a-zA-ZäöüÄÖÜß]$/.test(key)) {
+                addLetter(key.toUpperCase());
+            }
+        }
+
+        function addLetter(letter) {
+            if (currentGuess.length < WORD_LENGTH) {
+                currentGuess += letter;
+                updateGrid();
+            }
+        }
+
+        function removeLetter() {
+            if (currentGuess.length > 0) {
+                currentGuess = currentGuess.slice(0, -1);
+                updateGrid();
+            }
+        }
+
+        function updateGrid() {
+            const row = boardEl.children[currentAttempt];
+            const tiles = row.children;
+
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                const tile = tiles[i];
+                if (i < currentGuess.length) {
+                    tile.innerText = currentGuess[i];
+                    tile.classList.add('filled');
+                } else {
+                    tile.innerText = '';
+                    tile.classList.remove('filled');
+                }
+            }
+        }
+
+        function submitGuess() {
+            if (currentGuess.length < WORD_LENGTH) {
+                showMessage(`Das Wort muss ${WORD_LENGTH} Buchstaben haben!`);
+                return;
+            }
+
+            hideMessage();
+
+            const row = boardEl.children[currentAttempt];
+            const tiles = row.children;
+            
+            const targetLetters = TARGET_WORD.split('');
+            const guessLetters = currentGuess.split('');
+            const tileStatuses = new Array(WORD_LENGTH).fill('absent');
+
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                if (guessLetters[i] === targetLetters[i]) {
+                    tileStatuses[i] = 'correct';
+                    targetLetters[i] = null;
+                }
+            }
+
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                if (tileStatuses[i] !== 'correct') {
+                    const targetIndex = targetLetters.indexOf(guessLetters[i]);
+                    if (targetIndex !== -1) {
+                        tileStatuses[i] = 'present';
+                        targetLetters[targetIndex] = null;
+                    }
+                }
+            }
+
+            for (let i = 0; i < WORD_LENGTH; i++) {
+                tiles[i].classList.add(tileStatuses[i]);
+            }
+
+            if (currentGuess === TARGET_WORD) {
+                gameOver = true;
+                triggerSuccess();
+                return;
+            }
+
+            currentAttempt++;
+            currentGuess = "";
+
+            if (currentAttempt >= MAX_ATTEMPTS) {
+                gameOver = true;
+                showMessage(`Schade! Das gesuchte Wort war: ${TARGET_WORD}`);
+            }
+        }
+
+        function triggerSuccess() {
+            confetti({
+                particleCount: 150,
+                spread: 80,
+                origin: { y: 0.6 }
+            });
+
+            headerBox.classList.add('header-success');
+            mainTitle.innerText = `Lösungswort: ${TARGET_WORD}`;
+            subtitle.innerHTML = `🎉 Hervorragend gelöst!<br><div class="station-hint">Das Wort "${TARGET_WORD}" ist dein Hinweis auf die nächste Station!</div>`;
+        }
+
+        function showMessage(msg) {
+            msgEl.innerText = msg;
+            msgEl.style.display = 'block';
+        }
+
+        function hideMessage() {
+            msgEl.innerText = '';
+            msgEl.style.display = 'none';
+        }
+
+        initGame();
+    </script>
+</body>
+</html>

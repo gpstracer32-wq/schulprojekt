@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wortsalat</title>
+    <style>
+        :root {
+            --correct-color: #2ecc71;
+            --primary-color: #2c3e50;
+            --error-color: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #ffffff;
+            color: #2c3e50;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        #header-box {
+            background: #ffffff;
+            border: 2px solid #e0e0e0;
+            padding: 15px 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            text-align: center;
+            margin-bottom: 25px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 { margin: 0 0 5px 0; font-size: 2rem; color: #2c3e50; }
+        p { margin: 0; color: #555; font-weight: 500; }
+
+        /* Spielfeld Wrapper mit Capybara Dekorationen */
+        #salad-wrapper {
+            position: relative;
+            background: #ffffff;
+            border: 2px solid #e0e0e0;
+            padding: 25px 35px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
+        }
+
+        /* Capybara Dekorationen an den Seiten */
+        .capy-decor {
+            position: absolute;
+            pointer-events: none;
+            z-index: 3;
+            width: 110px;
+            height: auto;
+            border-radius: 12px;
+            filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.1));
+        }
+
+        /* Verteilung der 6 Bilder um die Box herum */
+        .capy-left-top     { left: -135px; top: -10px; }
+        .capy-right-top    { right: -135px; top: -10px; }
+        
+        .capy-left-mid     { left: -135px; top: 40%; }
+        .capy-right-mid    { right: -135px; top: 40%; }
+        
+        .capy-left-bottom  { left: -135px; bottom: -10px; }
+        .capy-right-bottom { right: -135px; bottom: -10px; }
+
+        .word-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            gap: 15px;
+        }
+
+        .scrambled-word {
+            font-weight: bold;
+            font-size: 1.1rem;
+            width: 160px;
+            text-align: right;
+            letter-spacing: 1px;
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-grow: 1;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 1rem;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.2s ease;
+            background-color: #ffffff;
+        }
+
+        input[type="text"]:focus {
+            border-color: #3498db;
+        }
+
+        input.correct {
+            border-color: var(--correct-color) !important;
+            background-color: #e8f8f5;
+            color: #196f3d;
+            font-weight: bold;
+        }
+
+        .status-icon {
+            width: 24px;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        #check-btn {
+            margin-top: 20px;
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: background-color 0.2s ease;
+        }
+
+        #check-btn:hover {
+            background-color: #2980b9;
+        }
+
+        /* Ergebnisbereich */
+        #result-box {
+            display: none;
+            margin-top: 25px;
+            background: #ffffff;
+            border: 3px solid var(--error-color);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .red-x {
+            font-size: 5rem;
+            color: var(--error-color);
+            line-height: 1;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .solution-text {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .hint-text {
+            font-size: 1.1rem;
+            color: #c0392b;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header-box">
+        <h1>Wortsalat</h1>
+        <p>Bringe die Buchstaben in die richtige Reihenfolge!</p>
+    </div>
+
+    <div id="salad-wrapper">
+        <!-- Deine 6 Capybara-Bilder -->
+        <img src="IMG_5385_2.jpeg" class="capy-decor capy-left-top" alt="Capybara mit Herzen">
+        <img src="IMG_5395_2.jpeg" class="capy-decor capy-right-top" alt="Capybara mit Kleeblatt">
+        <img src="IMG_5397_2.jpeg" class="capy-decor capy-left-mid" alt="Capybara mit Bubble Tea">
+        <img src="IMG_5398_2.jpeg" class="capy-decor capy-right-mid" alt="Capybara mit Gebäck">
+        <img src="IMG_5400_2.jpeg" class="capy-decor capy-left-bottom" alt="Capybara mit Pizza">
+        <!-- Falls das 6. Bild einen anderen Namen hat, passe den Dateinamen 'IMG_5401_2.jpeg' hier an: -->
+        <img src="IMG_5401_2.jpeg" class="capy-decor capy-right-bottom" alt="Capybara mit Blumenkorb">
+
+        <div id="word-list"></div>
+        <button id="check-btn" onclick="checkAnswers()">Eingaben überprüfen</button>
+    </div>
+
+    <div id="result-box">
+        <div class="red-x">✖</div>
+        <div class="solution-text" id="generated-solution"></div>
+        <div class="hint-text">Das ist leider nicht die richtige Spur! Bitte versuche das andere Rätsel.</div>
+    </div>
+
+    <script>
+        const WORDS = [
+            { scrambled: "ehltageF", solution: "Fehltage" },
+            { scrambled: "eitenbrA", solution: "Arbeiten" },
+            { scrambled: "nenLer", solution: "Lernen" },
+            { scrambled: "leSchu", solution: "Schule" },
+            { scrambled: "mieChe", solution: "Chemie" },
+            { scrambled: "aufgabenHaus", solution: "Hausaufgaben" },
+            { scrambled: "abendnertlE", solution: "Elternabend" },
+            { scrambled: "oteN echtelSch", solution: "Schlechte Note" },
+            { scrambled: "neRchne", solution: "Rechnen" },
+            { scrambled: "stheneufA", solution: "Aufstehen" },
+            { scrambled: "kihtE", solution: "Ethik" },
+            { scrambled: "sestT", solution: "Tests" },
+            { scrambled: "cherSiben", solution: "Schreiben" },
+            { scrambled: "ngilchE okblenaV", solution: "Englich Vokabeln" },
+            { scrambled: "rehreL", solution: "Lehrer" }
+        ];
+
+        const wordListEl = document.getElementById('word-list');
+        const resultBox = document.getElementById('result-box');
+        const generatedSolutionEl = document.getElementById('generated-solution');
+
+        function initGame() {
+            WORDS.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'word-row';
+
+                row.innerHTML = `
+                    <div class="scrambled-word">${item.scrambled}:</div>
+                    <div class="input-container">
+                        <input type="text" id="input-${index}" placeholder="Antwort..." autocomplete="off">
+                        <div class="status-icon" id="status-${index}"></div>
+                    </div>
+                `;
+                wordListEl.appendChild(row);
+            });
+        }
+
+        function checkAnswers() {
+            let allCorrect = true;
+            let firstLetters = "";
+
+            WORDS.forEach((item, index) => {
+                const inputEl = document.getElementById(`input-${index}`);
+                const statusEl = document.getElementById(`status-${index}`);
+                const userVal = inputEl.value.trim();
+
+                if (userVal.toLowerCase() === item.solution.toLowerCase()) {
+                    inputEl.classList.add('correct');
+                    statusEl.innerText = "✔";
+                    statusEl.style.color = "#2ecc71";
+                    
+                    firstLetters += item.solution.charAt(0).toUpperCase();
+                } else {
+                    inputEl.classList.remove('correct');
+                    statusEl.innerText = "✖";
+                    statusEl.style.color = "#e74c3c";
+                    allCorrect = false;
+                }
+            });
+
+            if (allCorrect) {
+                generatedSolutionEl.innerText = `Erzeugtes Lösungswort: "${firstLetters}"`;
+                resultBox.style.display = "block";
+                resultBox.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                resultBox.style.display = "none";
+            }
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
