@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEHEIMSCHRIFT - Das Emoji-Code-Rätsel</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #27ae60;
+            --accent: #f39c12;
+            --bg: #f4f6f7;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            margin-top: 0;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 25px;
+        }
+
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1100px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            box-sizing: border-box;
+        }
+
+        .sidebar {
+            flex: 1;
+            min-width: 300px;
+            max-width: 380px;
+        }
+
+        .main-content {
+            flex: 2;
+            min-width: 320px;
+            max-width: 680px;
+        }
+
+        /* Alphabet-Tabelle Style */
+        .code-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .code-table th, .code-table td {
+            border: 1px solid #ddd;
+            padding: 5px;
+            text-align: center;
+        }
+
+        .code-table th {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .code-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* Rätsel-Sätze Style */
+        .sentence-block {
+            background: #f8f9fa;
+            border-left: 4px solid var(--accent);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .sentence-title {
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .emoji-code {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            line-height: 1.8;
+            background: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+
+        .solution-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 0.95rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .action-btn:hover {
+            background-color: #219150;
+        }
+
+        #result-modal {
+            display: none;
+            margin-top: 20px;
+            background: #ffffff;
+            border: 3px solid var(--secondary);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .modal-title {
+            font-size: 1.4rem;
+            color: var(--secondary);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>GEHEIMSCHRIFT</h1>
+    <div class="subtitle">Das Emoji-Code-Rätsel</div>
+
+    <div class="game-container">
+        <!-- Linke Seite: Code-Übersicht -->
+        <div class="sidebar card">
+            <h3 style="margin-top:0;">🔐 Codeliste (A-Z)</h3>
+            <table class="code-table">
+                <thead>
+                    <tr>
+                        <th>Sym.</th>
+                        <th>Bsp.</th>
+                        <th>Buchst.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>🍎</td><td>Apfel</td><td><strong>A</strong></td></tr>
+                    <tr><td>⚽</td><td>Ball</td><td><strong>B</strong></td></tr>
+                    <tr><td>💻</td><td>Computer</td><td><strong>C</strong></td></tr>
+                    <tr><td>🐉</td><td>Drache</td><td><strong>D</strong></td></tr>
+                    <tr><td>🐘</td><td>Elefant</td><td><strong>E</strong></td></tr>
+                    <tr><td>🐟</td><td>Fisch</td><td><strong>F</strong></td></tr>
+                    <tr><td>🎸</td><td>Gitarre</td><td><strong>G</strong></td></tr>
+                    <tr><td>🏠</td><td>Haus</td><td><strong>H</strong></td></tr>
+                    <tr><td>🦔</td><td>Igel</td><td><strong>I</strong></td></tr>
+                    <tr><td>⛵</td><td>Jacht</td><td><strong>J</strong></td></tr>
+                    <tr><td>🐱</td><td>Katze</td><td><strong>K</strong></td></tr>
+                    <tr><td>🦁</td><td>Löwe</td><td><strong>L</strong></td></tr>
+                    <tr><td>🐭</td><td>Maus</td><td><strong>M</strong></td></tr>
+                    <tr><td>🦏</td><td>Nashorn</td><td><strong>N</strong></td></tr>
+                    <tr><td>🍊</td><td>Orange</td><td><strong>O</strong></td></tr>
+                    <tr><td>🐧</td><td>Pinguin</td><td><strong>P</strong></td></tr>
+                    <tr><td>🚀</td><td>Rakete</td><td><strong>R</strong></td></tr>
+                    <tr><td>☀️</td><td>Sonne</td><td><strong>S</strong></td></tr>
+                    <tr><td>🐯</td><td>Tiger</td><td><strong>T</strong></td></tr>
+                    <tr><td>⏰</td><td>Uhr</td><td><strong>U</strong></td></tr>
+                    <tr><td>🐦</td><td>Vogel</td><td><strong>V</strong></td></tr>
+                    <tr><td>🐋</td><td>Wal</td><td><strong>W</strong></td></tr>
+                    <tr><td>🦓</td><td>Zebra</td><td><strong>Z</strong></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Rechte Seite: Rätsel-Aufgaben -->
+        <div class="main-content card">
+            <h3 style="margin-top:0;">Entschlüssele die Sätze</h3>
+            <p style="font-size: 0.9rem; color: #555;">Nutze die Codeliste auf der linken Seite. Der Anfangsbuchstabe jedes Bildes ergibt den gesuchten Buchstaben!</p>
+
+            <!-- Satz 1 -->
+            <div class="sentence-block">
+                <div class="sentence-title">Satz 1:</div>
+                <div class="emoji-code">
+                    🎸🦁⏰🐘💻🐱 / 🦔🦏 / 🐉🐘🚀 / ☀️💻🏠⏰🦁🐘 / 🦔☀️🐯 / 🐦🦔🐘🦁🐘☀️ / 🐘🎸🍎🦁 / 🍊⚽ / 🐘☀️ / 🦁🐘🏠🚀🐘🚀 / 🐟🚀🐘⏰🦏🐉🐘 / 🍊🐉🐘🚀 / 🐟🍎💻🏠🐘🚀 / ☀️🦔🦏🐉
+                </div>
+                <input type="text" id="input-1" class="solution-input" placeholder="Entschlüsselten Satz hier eingeben...">
+            </div>
+
+            <!-- Satz 2 -->
+            <div class="sentence-block">
+                <div class="sentence-title">Satz 2:</div>
+                <div class="emoji-code">
+                    🍎⏰💻🏠 / 🐋🐘🦏🦏 / 🐘☀️ / 🦏🦔💻🏠🐯 / 🦔🐭🐭🐘🚀 / 🐘🦔🦏🐟🍎💻🏠 / 🦔☀️🐯 / 🐦🐘🚀☀️⏰💻🏠🐯 / ⛵🐘🐉🐘🚀 / 🦔🚀🎸🐘🦏🐉🐋🦔🐘 / ☀️🐘🦔🦏 / 🎸🦁⏰🐘💻🐱 / 🍎⏰💻🏠 / 🦔🦏 / 🐉🐘🚀 / ☀️💻🏠⏰🦁🐘 / 🦓⏰ / 🐟🦔🦏🐉🐘🦏
+                </div>
+                <input type="text" id="input-2" class="solution-input" placeholder="Entschlüsselten Satz hier eingeben...">
+            </div>
+
+            <!-- Satz 3 -->
+            <div class="sentence-block">
+                <div class="sentence-title">Satz 3:</div>
+                <div class="emoji-code">
+                    ☀️🍊🐋🍎☀️ / 🐋🦔🐘 / 🐉🦔🐘 / 🐧🚀🍊⛵🐘🐱🐯🐯🍎🎸🐘 / 🏠🦔🦁🐟🐯 / ⏰🦏☀️ / 🐭🦔🐯 / 🍎⚽🐋🐘💻🏠☀️🦁⏰🦏🎸 / 🦔🐭 / ☀️💻🏠⏰🦁🍎🦁🦁🐯🍎🎸 / 🐋🐘🦔🐯🐘🚀 / ☀️🐧🍎☀️☀️ / 🦓⏰ / 🏠🍎⚽🐘🦏
+                </div>
+                <input type="text" id="input-3" class="solution-input" placeholder="Entschlüsselten Satz hier eingeben...">
+            </div>
+
+            <!-- Satz 4 -->
+            <div class="sentence-block">
+                <div class="sentence-title">Satz 4:</div>
+                <div class="emoji-code">
+                    🦔🦏 / ⏰🦏☀️🐘🚀🐘🐭 / 🐧🚀🍊⛵🐘🐱🐯 / 🏠🍎⚽🐘🦏 / 🐋🦔🚀 / ⏰🦏☀️ / 🐦🦔🐘🦁🐘 / 🐦🐘🚀☀️💻🏠🦔🐘🐉🐘🦏🐘 / 🚀🍎⏰🐯☀️🐘🦁 / 🍎🦏🎸🐘☀️💻🏠🍎⏰🐯 / ⏰🦏🐉 / 🎸🐘🎸⏰💻🐱🐯 / 🐋🐘🦁💻🏠🐘☀️ / 🐋🦔🚀 / 🍎🐭 / 🐭🐘🦔☀️🐯🐘🦏 / 🐭🍊💻🏠🐯🐘🦏
+                </div>
+                <input type="text" id="input-4" class="solution-input" placeholder="Entschlüsselten Satz hier eingeben...">
+            </div>
+
+            <!-- Satz 5 -->
+            <div class="sentence-block">
+                <div class="sentence-title">Satz 5:</div>
+                <div class="emoji-code">
+                    🐋🦔🚀 / 🏠🍎⚽🐘 / 🐘🦔🦏🐘 / ☀️💻🏠🦏🦔🐯🦓🐘🦁⛵🍎🎸🐯 / 🐟⏰🐘🚀 / 🐘⏰💻🏠 / 🍎⏰☀️ / 🐉🐘🦏 / 🚀🍎⏰🐯☀️🐘🦁🦏 / 🎸🐘🐭🍎💻🏠🐯 / 🐉🦔🐘 / ⏰🦏☀️ / 🍎🐭 / 🐭🐘🦔☀️🐯🐘🦏 / 🎸🐘🐟🍎🦁🦁🐘🦏 / 🏠🍎🐯
+                </div>
+                <input type="text" id="input-5" class="solution-input" placeholder="Entschlüsselten Satz hier eingeben...">
+            </div>
+
+            <!-- Satz 6 -->
+            <div class="sentence-block">
+                <div class="sentence-title">Satz 6:</div>
+                <div class="emoji-code">
+                    🐉🦔🐘 / ☀️💻🏠🦏🦔🐯🦓🐘🦁⛵🍎🎸🐉 / ⚽🐘☀️🐯🐘🏠🐯 / 🍎⏰☀️ / 🐭🍊🚀☀️🐘 / 💻🍊🐉🐘☀️ / 🐱🚀🐘⏰🦓🐋🍊🚀🐯 / 🚀🍎⏰🐯☀️🐘🦁🦏 / 🐭⏰🚀🐉🍊🐱⏰☀️ / ⏰🦏🐉 / 🐦🦔🐘🦁🐘☀️ / 🐭🐘🏠🚀
+                </div>
+                <input type="text" id="input-6" class="solution-input" placeholder="Entschlüsselten Satz hier eingeben...">
+            </div>
+
+            <button class="action-btn" onclick="checkSolutions()">Lösung überprüfen</button>
+
+            <div id="result-modal">
+                <div class="modal-title">🎉 GUT GEMACHT!</div>
+                <div style="font-size: 1.2rem; color: #333; font-weight: bold;">Nächste Station ist "Glück oder Geschicklichkeit"</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SOLUTIONS = {
+            1: "Glück in der Schule ist vieles, egal ob es Lehrer, Freunde oder Fächer sind.",
+            2: "Auch wenn es nicht immer einfach ist, versucht jeder irgendwie sein Glück auch in der Schule zu finden.",
+            3: "Sowas wie die Projekttage hilft uns mit Abwechslung im Schulalltag weiter Spaß zu haben.",
+            4: "In unserem Projekt haben wir uns viele verschiedene Rätsel angeschaut und geguckt welches wir am meisten mochten.",
+            5: "Wir habe eine schnitzeljagt für euch aus den Rätseln gemacht die uns am meisten gefallen hat.",
+            6: "Die Schnitzeljagd besteht aus morse Codes, Kreuzwort Rätseln, Murdokus und vieles mehr."
+        };
+
+        function normalizeText(text) {
+            return text
+                .toLowerCase()
+                .replace(/[^a-zäöüß]/g, '');
+        }
+
+        function checkSolutions() {
+            let correctCount = 0;
+
+            for (let i = 1; i <= 6; i++) {
+                const userVal = document.getElementById(`input-${i}`).value;
+                const normalizedUser = normalizeText(userVal);
+                const normalizedTarget = normalizeText(SOLUTIONS[i]);
+
+                const inputEl = document.getElementById(`input-${i}`);
+
+                if (normalizedUser.length > 0 && normalizedUser === normalizedTarget) {
+                    inputEl.style.borderColor = '#27ae60';
+                    inputEl.style.backgroundColor = '#e8f8f5';
+                    correctCount++;
+                } else {
+                    inputEl.style.borderColor = '#ccc';
+                    inputEl.style.backgroundColor = '#fff';
+                }
+            }
+
+            const modal = document.getElementById('result-modal');
+
+            // Prüft, ob mindestens 2 Sätze richtig sind
+            if (correctCount >= 2) {
+                modal.style.display = 'block';
+                modal.scrollIntoView({ behavior: 'smooth' });
+
+                confetti({
+                    particleCount: 150,
+                    spread: 90,
+                    origin: { y: 0.6 }
+                });
+            } else {
+                modal.style.display = 'none';
+                alert('Du musst mindestens 2 Sätze richtig entschlüsseln, um das Rätsel zu lösen!');
+            }
+        }
+    </script>
+</body>
+</html>
