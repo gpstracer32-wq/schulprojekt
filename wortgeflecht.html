@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wortgeflecht Clone</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --selected-color: #3498db;
+            --found-color: #2ecc71;
+            --error-color: #e74c3c;
+            --bg-color: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        h1 { 
+            margin-bottom: 5px; 
+            text-align: center;
+        }
+
+        p {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 0.95rem;
+        }
+
+        /* Board Styling & Canvas Overlay */
+        #board-container {
+            position: relative;
+            margin: 10px 0;
+            user-select: none;
+            touch-action: manipulation;
+            max-width: 100%;
+            overflow-x: auto;
+            padding: 5px;
+        }
+
+        #board {
+            display: grid;
+            gap: 6px;
+            background: white;
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Canvas-Schicht für die Verbindungslinien */
+        #line-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .cell {
+            width: 38px;
+            height: 38px;
+            background-color: #edf2f7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+            position: relative;
+            z-index: 3;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (min-width: 600px) {
+            #board { gap: 10px; padding: 15px; }
+            .cell { width: 50px; height: 50px; font-size: 1.2rem; }
+        }
+
+        .cell.selected {
+            background-color: var(--selected-color);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .cell.found {
+            background-color: var(--found-color);
+            color: white;
+            cursor: default;
+        }
+
+        /* Mobile Controls */
+        #controls-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0;
+            width: 100%;
+        }
+
+        #current-word-preview {
+            font-size: 1.2rem;
+            font-weight: bold;
+            min-height: 28px;
+            letter-spacing: 2px;
+            color: var(--primary-color);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Found words display */
+        #found-words-pool {
+            margin: 15px 0;
+            min-height: 50px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .draggable-word {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: grab;
+            font-weight: bold;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            user-select: none;
+            touch-action: none;
+        }
+
+        .draggable-word.selected-word {
+            outline: 3px solid var(--accent-color, #f1c40f);
+            transform: scale(1.05);
+        }
+
+        /* Sorting Tables Section */
+        #sorting-section {
+            display: none;
+            width: 100%;
+            margin-top: 15px;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .tables-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+        }
+
+        @media (min-width: 600px) {
+            .tables-container {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+        }
+
+        .drop-zone-wrapper {
+            flex: 1;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .drop-zone-wrapper h3 {
+            text-align: center;
+            margin-top: 0;
+            font-size: 1rem;
+        }
+
+        .drop-zone {
+            min-height: 120px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 6px;
+            padding: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-content: flex-start;
+        }
+
+        .drop-zone.drag-over {
+            background-color: #e2e8f0;
+        }
+
+        /* Buttons & Messages */
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover { background-color: #1a252f; }
+        
+        button.btn-submit {
+            background-color: var(--found-color);
+        }
+        button.btn-submit:hover { background-color: #27ae60; }
+
+        button.btn-reset {
+            background-color: var(--error-color);
+        }
+        button.btn-reset:hover { background-color: #c0392b; }
+
+        #final-message {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        #error-msg {
+            color: var(--error-color);
+            font-weight: bold;
+            min-height: 20px;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Wortgeflecht</h1>
+    <p>Klicke oder ziehe benachbarte Buchstaben, um Wörter zu bilden!</p>
+
+    <!-- Das Spielfeld mit Canvas-Overlay -->
+    <div id="board-container">
+        <div id="board"></div>
+        <canvas id="line-canvas"></canvas>
+    </div>
+
+    <!-- Steuerung & Vorschau -->
+    <div id="controls-container">
+        <div id="current-word-preview">-</div>
+        <div class="btn-group">
+            <button id="submit-btn" class="btn-submit">Eingabe</button>
+            <button id="reset-btn" class="btn-reset">Zurücksetzen</button>
+        </div>
+    </div>
+
+    <!-- Bereich für gefundene Wörter -->
+    <div id="found-words-pool"></div>
+
+    <!-- Einsortier-Bereich -->
+    <div id="sorting-section">
+        <h2>Sortiere die Wörter richtig ein:</h2>
+        <div class="tables-container">
+            <div class="drop-zone-wrapper">
+                <h3 id="table1-title">Kategorie 1</h3>
+                <div id="drop-table1" class="drop-zone" data-category="1"></div>
+            </div>
+            <div class="drop-zone-wrapper">
+                <h3 id="table2-title">Kategorie 2</h3>
+                <div id="drop-table2" class="drop-zone" data-category="2"></div>
+            </div>
+        </div>
+        <button id="check-sorting-btn" style="margin-top: 15px;">Überprüfen</button>
+        <div id="error-msg"></div>
+    </div>
+
+    <!-- Final-Nachricht -->
+    <div id="final-message"></div>
+
+    <script>
+        /************************************************************************
+         * KONFIGURATION
+         ************************************************************************/
+        const CONFIG = {
+            cols: 12,
+            rows: 16,
+
+            matrix: [
+                'Z', 'A', 'L', 'K', 'W', 'S', 'T', 'O', 'I', 'H', 'U', 'S',
+                'S', 'K', 'T', 'A', 'S', 'E', 'P', 'L', 'E', 'R', 'J', 'H',
+                'N', 'L', 'A', 'E', 'N', 'Z', 'N', 'T', 'N', 'X', 'V', 'E',
+                'I', 'T', 'E', 'S', 'R', 'A', 'R', 'T', 'E', 'E', 'N', 'O',
+                'S', 'R', 'E', 'S', 'K', 'U', 'B', 'K', 'T', 'S', 'Y', 'V',
+                'E', 'S', 'O', 'N', 'E', 'L', 'E', 'I', 'R', 'N', 'T', 'L',
+                'J', 'K', 'F', 'N', 'W', 'P', 'U', 'T', 'B', 'M', 'I', 'J',
+                'B', 'A', 'C', 'E', 'T', 'S', 'R', 'X', 'T', 'T', 'K', 'Q',
+                'M', 'Y', 'H', 'R', 'E', 'E', 'F', 'O', 'K', 'A', 'G', 'S',
+                'O', 'M', 'U', 'K', 'Z', 'I', 'T', 'L', 'E', 'L', 'P', 'A',
+                'N', 'L', 'L', 'A', 'U', 'L', 'G', 'D', 'R', 'S', 'U', 'R',
+                'P', 'R', 'A', 'F', 'S', 'S', 'T', 'K', 'C', 'U', 'C', 'A',
+                'H', 'I', 'T', 'Z', 'O', 'I', 'R', 'U', 'S', 'K', 'M', 'U',
+                'Z', 'S', 'E', 'N', 'U', 'E', 'K', 'N', 'T', 'V', 'B', 'E',
+                'H', 'C', 'B', 'P', 'S', 'Y', 'T', 'J', 'Z', 'A', 'P', 'S',
+                'N', 'A', 'L', 'Q', 'E', 'S', 'X', 'H', 'C', 'I', 'T', 'X'
+            ],
+
+            words: ["KLASSENFAHRT", "ERFOLG", "RUHE", "AUSFALL", "MITTAGSPAUSE", "INTERESSE", "KUNST", "TEST", "NACHSITZEN", "KLASSENARBEIT", "STRESS", "TOILETTEN", "ZEITDRUCK", "KONKURENZ"],
+
+            category1: {
+                title: "Was bringt Glück?",
+                words: ["KLASSENFAHRT", "ERFOLG", "RUHE", "AUSFALL", "MITTAGSPAUSE", "INTERESSE", "KUNST"]
+            },
+            category2: {
+                title: "Und was nicht?",
+                words: ["TEST", "NACHSITZEN", "KLASSENARBEIT", "STRESS", "TOILETTEN", "ZEITDRUCK", "KONKURENZ"]
+            },
+
+            successMessage: "Dein Hinweis für das nächste Rätsel heißt 'Keramik'!"
+        };
+
+        /************************************************************************
+         * SPIELLOGIK
+         ************************************************************************/
+        
+        let selectedIndices = [];
+        let isMouseDown = false;
+        let foundWords = [];
+        let foundPaths = [];
+
+        const boardEl = document.getElementById('board');
+        const canvas = document.getElementById('line-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const poolEl = document.getElementById('found-words-pool');
+        const sortingSection = document.getElementById('sorting-section');
+        const finalMsgEl = document.getElementById('final-message');
+        const errorMsgEl = document.getElementById('error-msg');
+        const previewEl = document.getElementById('current-word-preview');
+
+        function initGame() {
+            boardEl.style.gridTemplateColumns = `repeat(${CONFIG.cols}, 1fr)`;
+            
+            document.getElementById('table1-title').innerText = CONFIG.category1.title;
+            document.getElementById('table2-title').innerText = CONFIG.category2.title;
+
+            CONFIG.matrix.forEach((char, index) => {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.innerText = char;
+                cell.dataset.index = index;
+
+                // Mouse Events (Klick/Drag auf Desktop)
+                cell.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    handleCellInteraction(index, true);
+                });
+                cell.addEventListener('mouseenter', () => {
+                    if (isMouseDown) handleCellInteraction(index, false);
+                });
+
+                // Touch/Click Event (Mobil-Gebrauch)
+                cell.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (!isMouseDown) handleCellClick(index);
+                });
+
+                boardEl.appendChild(cell);
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isMouseDown) {
+                    isMouseDown = false;
+                }
+            });
+
+            document.getElementById('submit-btn').addEventListener('click', submitWord);
+            document.getElementById('reset-btn').addEventListener('click', clearSelection);
+
+            setupDragAndDrop();
+
+            setTimeout(resizeCanvas, 50);
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        function resizeCanvas() {
+            canvas.width = boardEl.offsetWidth;
+            canvas.height = boardEl.offsetHeight;
+            drawLines();
+        }
+
+        function getCellCenter(index) {
+            const cell = getCell(index);
+            const rect = cell.getBoundingClientRect();
+            const boardRect = boardEl.getBoundingClientRect();
+
+            return {
+                x: rect.left - boardRect.left + rect.width / 2,
+                y: rect.top - boardRect.top + rect.height / 2
+            };
+        }
+
+        function drawLines() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            foundPaths.forEach(path => {
+                drawLinePath(path, '#2ecc71', 6);
+            });
+
+            if (selectedIndices.length > 1) {
+                drawLinePath(selectedIndices, '#3498db', 6);
+            }
+        }
+
+        function drawLinePath(indices, color, lineWidth) {
+            if (indices.length < 2) return;
+
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            const start = getCellCenter(indices[0]);
+            ctx.moveTo(start.x, start.y);
+
+            for (let i = 1; i < indices.length; i++) {
+                const pt = getCellCenter(indices[i]);
+                ctx.lineTo(pt.x, pt.y);
+            }
+
+            ctx.stroke();
+        }
+
+        function isNeighbor(idx1, idx2) {
+            const r1 = Math.floor(idx1 / CONFIG.cols);
+            const c1 = idx1 % CONFIG.cols;
+            const r2 = Math.floor(idx2 / CONFIG.cols);
+            const c2 = idx2 % CONFIG.cols;
+
+            const rowDiff = Math.abs(r1 - r2);
+            const colDiff = Math.abs(c1 - c2);
+
+            return rowDiff <= 1 && colDiff <= 1 && !(rowDiff === 0 && colDiff === 0);
+        }
+
+        // Behandlung von Desktop Drag-Selection
+        function handleCellInteraction(index, isStart) {
+            const cell = getCell(index);
+            if (cell.classList.contains('found')) return;
+
+            if (isStart) {
+                isMouseDown = true;
+                if (selectedIndices.length === 0) {
+                    addCellToSelection(index);
+                }
+            } else if (isMouseDown) {
+                tryExtendSelection(index);
+            }
+        }
+
+        // Behandlung von einzelnem Klicken/Tippen
+        function handleCellClick(index) {
+            const cell = getCell(index);
+            if (cell.classList.contains('found')) return;
+
+            if (selectedIndices.length === 0) {
+                addCellToSelection(index);
+            } else {
+                const lastIdx = selectedIndices[selectedIndices.length - 1];
+
+                // Klick auf das vorletzte Element => rückgängig machen
+                if (selectedIndices.length > 1 && selectedIndices[selectedIndices.length - 2] === index) {
+                    const removed = selectedIndices.pop();
+                    getCell(removed).classList.remove('selected');
+                    updatePreview();
+                    drawLines();
+                    return;
+                }
+
+                // Klick auf das bereits gewählte Element selbst
+                if (lastIdx === index) return;
+
+                tryExtendSelection(index);
+            }
+        }
+
+        function tryExtendSelection(index) {
+            const lastIdx = selectedIndices[selectedIndices.length - 1];
+
+            if (selectedIndices.length > 1 && selectedIndices[selectedIndices.length - 2] === index) {
+                const removed = selectedIndices.pop();
+                getCell(removed).classList.remove('selected');
+                updatePreview();
+                drawLines();
+                return;
+            }
+
+            if (!selectedIndices.includes(index) && isNeighbor(lastIdx, index)) {
+                addCellToSelection(index);
+            }
+        }
+
+        function addCellToSelection(index) {
+            selectedIndices.push(index);
+            getCell(index).classList.add('selected');
+            updatePreview();
+            drawLines();
+        }
+
+        function updatePreview() {
+            if (selectedIndices.length === 0) {
+                previewEl.innerText = "-";
+            } else {
+                previewEl.innerText = selectedIndices.map(i => CONFIG.matrix[i]).join('');
+            }
+        }
+
+        function submitWord() {
+            const currentWord = selectedIndices.map(i => CONFIG.matrix[i]).join('');
+
+            if (CONFIG.words.includes(currentWord) && !foundWords.includes(currentWord)) {
+                foundWords.push(currentWord);
+                foundPaths.push([...selectedIndices]);
+
+                selectedIndices.forEach(i => {
+                    const cell = getCell(i);
+                    cell.classList.remove('selected');
+                    cell.classList.add('found');
+                });
+                addWordToPool(currentWord);
+                checkAllWordsFound();
+            } else {
+                selectedIndices.forEach(i => getCell(i).classList.remove('selected'));
+            }
+
+            selectedIndices = [];
+            updatePreview();
+            drawLines();
+        }
+
+        function clearSelection() {
+            selectedIndices.forEach(i => getCell(i).classList.remove('selected'));
+            selectedIndices = [];
+            updatePreview();
+            drawLines();
+        }
+
+        function getCell(index) {
+            return boardEl.children[index];
+        }
+
+        function addWordToPool(word) {
+            const wordEl = document.createElement('div');
+            wordEl.classList.add('draggable-word');
+            wordEl.innerText = word;
+            wordEl.draggable = true;
+            wordEl.id = 'word-' + word;
+
+            wordEl.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', word);
+            });
+
+            // Touch-Basiertes Verschieben für Mobilgeräte
+            wordEl.addEventListener('click', () => {
+                handleWordMobileSelect(wordEl);
+            });
+
+            poolEl.appendChild(wordEl);
+        }
+
+        let selectedWordElForMobile = null;
+
+        function handleWordMobileSelect(wordEl) {
+            if (selectedWordElForMobile) {
+                selectedWordElForMobile.classList.remove('selected-word');
+            }
+            if (selectedWordElForMobile === wordEl) {
+                selectedWordElForMobile = null;
+            } else {
+                selectedWordElForMobile = wordEl;
+                selectedWordElForMobile.classList.add('selected-word');
+            }
+        }
+
+        function checkAllWordsFound() {
+            if (foundWords.length === CONFIG.words.length) {
+                sortingSection.style.display = 'flex';
+                document.getElementById('controls-container').style.display = 'none';
+            }
+        }
+
+        /* Drag & Drop & Touch-Sorting Logik */
+        function setupDragAndDrop() {
+            const dropZones = document.querySelectorAll('.drop-zone');
+            const zones = [...dropZones, poolEl];
+
+            zones.forEach(zone => {
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.classList.add('drag-over');
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('drag-over');
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    const word = e.dataTransfer.getData('text/plain');
+                    const wordEl = document.getElementById('word-' + word);
+                    if (wordEl) {
+                        zone.appendChild(wordEl);
+                    }
+                });
+
+                // Antippen der Zone verschiebt aktuell ausgewähltes Wort auf Mobilgeräten
+                zone.addEventListener('click', (e) => {
+                    if (selectedWordElForMobile && e.target !== selectedWordElForMobile) {
+                        zone.appendChild(selectedWordElForMobile);
+                        selectedWordElForMobile.classList.remove('selected-word');
+                        selectedWordElForMobile = null;
+                    }
+                });
+            });
+
+            document.getElementById('check-sorting-btn').addEventListener('click', validateSorting);
+        }
+
+        function validateSorting() {
+            errorMsgEl.innerText = "";
+            
+            const table1Words = Array.from(document.getElementById('drop-table1').children).map(el => el.innerText);
+            const table2Words = Array.from(document.getElementById('drop-table2').children).map(el => el.innerText);
+
+            if (poolEl.children.length > 0) {
+                errorMsgEl.innerText = "Bitte sortiere zuerst alle Wörter in die Tabellen ein!";
+                return;
+            }
+
+            const isCat1Correct = compareArrays(table1Words, CONFIG.category1.words);
+            const isCat2Correct = compareArrays(table2Words, CONFIG.category2.words);
+
+            if (isCat1Correct && isCat2Correct) {
+                sortingSection.style.display = 'none';
+                finalMsgEl.innerText = CONFIG.successMessage;
+                finalMsgEl.style.display = 'block';
+            } else {
+                errorMsgEl.innerText = "Das ist noch nicht ganz richtig. Überprüfe die Zuordnung noch einmal!";
+            }
+        }
+
+        function compareArrays(arr1, arr2) {
+            if (arr1.length !== arr2.length) return false;
+            const sorted1 = [...arr1].sort();
+            const sorted2 = [...arr2].sort();
+            return sorted1.every((value, index) => value === sorted2[index]);
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
