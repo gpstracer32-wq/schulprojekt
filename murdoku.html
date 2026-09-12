@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MURDOKU - Das digitale Detektiv-Rätsel</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #27ae60;
+            --danger: #c0392b;
+            --accent: #f39c12;
+            --bg: #f4f6f7;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            margin-top: 0;
+            color: #666;
+            font-style: italic;
+        }
+
+        .level-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: 2px solid var(--primary);
+            background-color: #fff;
+            color: var(--primary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active, .tab-btn:hover {
+            background-color: var(--primary);
+            color: #fff;
+        }
+
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1100px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            box-sizing: border-box;
+        }
+
+        .sidebar {
+            flex: 1;
+            min-width: 300px;
+            max-width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .board-area {
+            flex: 2;
+            min-width: 320px;
+            max-width: 650px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .clues-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .clues-list li {
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-left: 4px solid var(--accent);
+            border-radius: 4px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid var(--accent);
+            padding: 10px;
+            font-size: 0.85rem;
+            color: #856404;
+            border-radius: 4px;
+        }
+
+        .map-wrapper {
+            width: 100%;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #ccc;
+            background: #fff;
+            text-align: center;
+        }
+
+        .map-wrapper img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+        }
+
+        .map-zone {
+            background: #eef2f5;
+            border: 2px dashed #b0bec5;
+            border-radius: 10px;
+            padding: 10px;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .zone-title {
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #455a64;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .zone-slots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            width: 100%;
+            justify-content: center;
+            min-height: 60px;
+        }
+
+        .character-bank {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            width: 100%;
+            min-height: 90px;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+
+        .character-card {
+            width: 75px;
+            background: #fff;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 5px;
+            text-align: center;
+            cursor: grab;
+            user-select: none;
+            transition: transform 0.1s;
+        }
+
+        .character-card img, .character-card svg {
+            width: 100%;
+            height: 65px;
+            object-fit: cover;
+            border-radius: 4px;
+            pointer-events: none;
+        }
+
+        .character-card .name {
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-top: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .culprit-section {
+            width: 100%;
+            margin-top: 20px;
+            background: #fdf2e9;
+            border: 2px solid var(--danger);
+            border-radius: 10px;
+            padding: 15px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .culprit-section label {
+            display: block;
+            font-weight: bold;
+            color: var(--danger);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-size: 0.95rem;
+        }
+
+        .culprit-section select {
+            width: 80%;
+            padding: 8px 12px;
+            font-size: 1rem;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            outline: none;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        #result-modal {
+            display: none;
+            margin-top: 20px;
+            background: #ffffff;
+            border: 3px solid var(--secondary);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .modal-title {
+            font-size: 1.4rem;
+            color: var(--secondary);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>MURDOKU</h1>
+    <div class="subtitle">Das digitale Detektiv-Rätsel</div>
+
+    <div class="level-tabs">
+        <button class="tab-btn active" onclick="loadLevel(1)">Level 1 (Leicht)</button>
+        <button class="tab-btn" onclick="loadLevel(2)">Level 2 (Mittel)</button>
+        <button class="tab-btn" onclick="loadLevel(3)">Level 3 (Schwer)</button>
+    </div>
+
+    <div class="game-container">
+        <div class="sidebar card">
+            <h3 style="margin-top:0;">Ermittlungsakte</h3>
+            <ul id="clues-container" class="clues-list"></ul>
+            <div class="warning-box">
+                <strong>Achtung:</strong> Falsche Fährten! Nicht jede genannte Ortsangabe beschreibt den tatsächlichen Aufenthaltsort der Lösung. Bleibe am Platz und kombiniere logisch!
+            </div>
+        </div>
+
+        <div class="board-area card">
+            <!-- 1. Lageplan ganz oben -->
+            <h3 style="margin-top:0;">Tatort-Lageplan</h3>
+            <div class="map-wrapper">
+                <img id="map-image" src="" alt="Lageplan">
+            </div>
+
+            <!-- 2. Personenliste direkt unter dem Lageplan -->
+            <h3>Personen (Ziehen oder Klicken)</h3>
+            <div id="character-bank" class="character-bank" ondragover="allowDrop(event)" ondrop="drop(event, 'bank')"></div>
+
+            <!-- 3. Zuordnung der Orte ganz unten -->
+            <h3>Zuordnung der Orte</h3>
+            <div class="map-grid">
+                <div class="map-zone" ondragover="allowDrop(event)" ondrop="drop(event, 'Hauptgebäude')">
+                    <div class="zone-title">Gebäude A (Hauptgebäude)</div>
+                    <div class="zone-slots" id="zone-Hauptgebäude"></div>
+                </div>
+                <div class="map-zone" ondragover="allowDrop(event)" ondrop="drop(event, 'Verkauf')">
+                    <div class="zone-title">Verkauf</div>
+                    <div class="zone-slots" id="zone-Verkauf"></div>
+                </div>
+                <div class="map-zone" ondragover="allowDrop(event)" ondrop="drop(event, 'Pavillon')">
+                    <div class="zone-title">Pavillon</div>
+                    <div class="zone-slots" id="zone-Pavillon"></div>
+                </div>
+                <div class="map-zone" ondragover="allowDrop(event)" ondrop="drop(event, 'Mensa/Rest')">
+                    <div class="zone-title">Mensa / Übriger Ort</div>
+                    <div class="zone-slots" id="zone-Mensa/Rest"></div>
+                </div>
+            </div>
+
+            <!-- Täterauswahl ganz unten -->
+            <div class="culprit-section">
+                <label for="culprit-select">🕵️ Wer ist der Mörder / die Mörderin?</label>
+                <select id="culprit-select">
+                    <option value="">-- Person auswählen --</option>
+                </select>
+            </div>
+
+            <button class="action-btn" onclick="checkSolution()">Fall überprüfen</button>
+
+            <div id="result-modal">
+                <div class="modal-title">✔ FALL GELÖST!</div>
+                <div class="modal-text" id="result-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MAP_IMAGES = {
+            1: "Screenshot 2026-09-11 114430.png",
+            2: "Screenshot 2026-09-11 114642.png",
+            3: "Screenshot 2026-09-11 114705.png"
+        };
+
+        // Bildzuordnung für hochgeladene Avatare
+        const AVATAR_IMAGES = {
+            "Liliana": "IMG_3320.jpeg",
+            "Isabella": "IMG_3321.jpeg",
+            "Arina": "IMG_3322.jpeg",
+            "Damian": "IMG_3323.jpeg",
+            "Marleen": "IMG_3324.jpeg",
+            "Max": "IMG_3309.jpeg",
+            "Lukas": "IMG_3308.jpeg",
+            "Jan": "IMG_3307.jpeg",
+            "Milan": "IMG_3306.jpeg",
+            "Ella": "IMG_3310.jpeg",
+            "Marie": "IMG_3315.jpeg",
+            "Aliya": "IMG_3311.jpeg",
+            "Maximilian": "IMG_3316.jpeg",
+            "Julia": "IMG_3312.jpeg",
+            "Simon": "IMG_3317.jpeg",
+            "Eyleen": "IMG_3313.jpeg",
+            "Eileen": "IMG_3313.jpeg",
+            "Ariana": "IMG_3318.jpeg",
+            "Mina": "IMG_3314.jpeg",
+            "Tessa": "IMG_3319.jpeg"
+        };
+
+        function getAvatarSVG(name) {
+            const colors = {
+                "Isabella": "#f5b7b1", "Liliana": "#a9dfbf", "Arina": "#f9e79f",
+                "Damian": "#fadbd8", "Marleen": "#d4efdf", "Maximilian": "#d6eaf8",
+                "Ariana": "#fcf3cf", "Luna": "#ebdef0", "Marie": "#d1f2eb",
+                "Tessa": "#f9ebd2", "Simon": "#e5e8e8", "Lukas": "#f2d7d5",
+                "Alina": "#e8daef", "Julia": "#d4ac0d", "Ella": "#a9cce3",
+                "Jan": "#d5f5e3", "Max": "#fef9e7", "Milan": "#fadbd8", "Eyleen": "#e8f8f5"
+            };
+            const bg = colors[name] || "#eee";
+
+            return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100" height="100" fill="${bg}"/>
+                <circle cx="50" cy="45" r="22" fill="#e0ac69"/>
+                <path d="M 20 90 Q 50 60 80 90 Z" fill="#2c3e50"/>
+                <circle cx="50" cy="35" r="24" fill="#34495e" opacity="0.3"/>
+                <circle cx="43" cy="45" r="3" fill="#000"/>
+                <circle cx="57" cy="45" r="3" fill="#000"/>
+                <path d="M 45 54 Q 50 58 55 54" stroke="#000" stroke-width="2" fill="none"/>
+            </svg>`;
+        }
+
+        function getAvatarHTML(name) {
+            if (AVATAR_IMAGES[name]) {
+                return `<img src="${AVATAR_IMAGES[name]}" alt="${name}">`;
+            }
+            return getAvatarSVG(name);
+        }
+
+        const LEVELS = {
+            1: {
+                clues: [
+                    "<strong>Isabella:</strong> Sie war am Hauptgebäude.",
+                    "<strong>Liliana:</strong> Sie war beim Verkauf.",
+                    "<strong>Arina:</strong> Sie war am Pavillon.",
+                    "<strong>Damian (Opfer):</strong> Er war an dem Ort, der noch nicht genannt wurde.",
+                    "<strong>Marleen:</strong> Sie war am selben Ort wie die Person, die beim Verkauf war."
+                ],
+                characters: ["Isabella", "Liliana", "Arina", "Damian", "Marleen"],
+                culprit: "Marleen",
+                solution: { 
+                    "Isabella": "Hauptgebäude", 
+                    "Liliana": "Verkauf", 
+                    "Marleen": "Verkauf", 
+                    "Arina": "Pavillon", 
+                    "Damian": "Mensa/Rest" 
+                },
+                endText: "Ihr habt den Fall gelöst! Jetzt beginnt eure letzte Spur: Geht zum C-Gebäude. Sucht dort den unteren Stock und die Klasse 5C. Euer endgültiges Ziel ist Raum B001."
+            },
+            2: {
+                clues: [
+                    "<strong>Maximilian:</strong> Er war am Hauptgebäude.",
+                    "<strong>Ariana:</strong> Sie war nicht am Hauptgebäude, sondern am Pavillon.",
+                    "<strong>Luna:</strong> Sie war dort, wo man etwas kaufen kann.",
+                    "<strong>Marie:</strong> Sie war an dem Ort, der nicht zum Hauptgebäude und nicht zum Pavillon gehört.",
+                    "<strong>Tessa (Opfer):</strong> Sie war am letzten noch verbleibenden Ort.",
+                    "<strong>Simon:</strong> Er war am selben Ort wie die Person, die etwas kaufen kann."
+                ],
+                characters: ["Maximilian", "Ariana", "Luna", "Marie", "Tessa", "Simon"],
+                culprit: "Simon",
+                solution: { 
+                    "Maximilian": "Hauptgebäude", 
+                    "Ariana": "Pavillon", 
+                    "Luna": "Verkauf", 
+                    "Simon": "Verkauf", 
+                    "Marie": "Mensa/Rest", 
+                    "Tessa": "Mensa/Rest" 
+                },
+                endText: "Der Fall ist gelöst! Simon war der Mörder und Tessa das Opfer. Geht nun zum C-Gebäude. Sucht den unteren Stock und die Klasse 5C. Euer Ziel befindet sich in Raum B001."
+            },
+            3: {
+                clues: [
+                    "<strong>Lukas:</strong> Er war am Hauptgebäude, aber nicht beim Verkauf.",
+                    "<strong>Alina:</strong> Sie war nicht am Hauptgebäude. Sie war am Pavillon.",
+                    "<strong>Julia:</strong> Sie war dort, wo man etwas kaufen kann.",
+                    "<strong>Ella:</strong> Sie war weder beim Verkauf noch am Pavillon.",
+                    "<strong>Jan:</strong> Er war an einem Ort, der mit dem Pavillon verbunden ist.",
+                    "<strong>Max:</strong> Er war dort, wo viele Schülerinnen und Schüler zusammenkommen.",
+                    "<strong>Milan (Opfer):</strong> Er war am letzten noch verbleibenden Ort.",
+                    "<strong>Eyleen:</strong> Sie war am selben Ort wie die Person, die etwas kaufen kann, aber nicht beim Verkauf."
+                ],
+                characters: ["Lukas", "Alina", "Julia", "Ella", "Jan", "Max", "Milan", "Eyleen"],
+                culprit: "Eyleen",
+                solution: { 
+                    "Lukas": "Hauptgebäude", 
+                    "Alina": "Pavillon", 
+                    "Julia": "Verkauf", 
+                    "Ella": "Hauptgebäude", 
+                    "Jan": "Pavillon", 
+                    "Max": "Mensa/Rest", 
+                    "Milan": "Mensa/Rest", 
+                    "Eyleen": "Mensa/Rest" 
+                },
+                endText: "Ihr habt den schwierigsten Fall gelöst! Jetzt folgt eure letzte Spur: Geht zum C-Gebäude. Sucht den unteren Stock und die Klasse 5C. Euer endgültiges Ziel ist Raum B001."
+            }
+        };
+
+        let currentLevel = 1;
+        let placementState = {};
+
+        function loadLevel(lvl) {
+            currentLevel = lvl;
+            placementState = {};
+
+            document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active', idx + 1 === lvl);
+            });
+
+            document.getElementById('result-modal').style.display = 'none';
+            document.getElementById('map-image').src = MAP_IMAGES[lvl];
+
+            const cluesContainer = document.getElementById('clues-container');
+            cluesContainer.innerHTML = '';
+            LEVELS[lvl].clues.forEach(clue => {
+                const li = document.createElement('li');
+                li.innerHTML = clue;
+                cluesContainer.appendChild(li);
+            });
+
+            document.querySelectorAll('.zone-slots').forEach(slot => slot.innerHTML = '');
+            
+            const bank = document.getElementById('character-bank');
+            bank.innerHTML = '';
+
+            const select = document.getElementById('culprit-select');
+            select.innerHTML = '<option value="">-- Person auswählen --</option>';
+
+            LEVELS[lvl].characters.forEach(name => {
+                const card = createCharacterCard(name);
+                bank.appendChild(card);
+
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                select.appendChild(opt);
+            });
+        }
+
+        function createCharacterCard(name) {
+            const card = document.createElement('div');
+            card.className = 'character-card';
+            card.id = `char-${name}`;
+            card.draggable = true;
+
+            card.innerHTML = `
+                ${getAvatarHTML(name)}
+                <div class="name">${name}</div>
+            `;
+
+            card.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', name);
+            });
+
+            card.addEventListener('click', () => {
+                cyclePlacement(name);
+            });
+
+            return card;
+        }
+
+        function allowDrop(ev) { ev.preventDefault(); }
+
+        function drop(ev, targetZone) {
+            ev.preventDefault();
+            const charName = ev.dataTransfer.getData('text/plain');
+            moveCharacterToZone(charName, targetZone);
+        }
+
+        function cyclePlacement(charName) {
+            const zones = ['bank', 'Hauptgebäude', 'Verkauf', 'Pavillon', 'Mensa/Rest'];
+            const currentZone = placementState[charName] || 'bank';
+            const nextIndex = (zones.indexOf(currentZone) + 1) % zones.length;
+            moveCharacterToZone(charName, zones[nextIndex]);
+        }
+
+        function moveCharacterToZone(charName, targetZone) {
+            const card = document.getElementById(`char-${charName}`);
+            if (!card) return;
+
+            if (targetZone === 'bank') {
+                document.getElementById('character-bank').appendChild(card);
+                delete placementState[charName];
+            } else {
+                const zoneSlot = document.getElementById(`zone-${targetZone}`);
+                if (zoneSlot) {
+                    zoneSlot.appendChild(card);
+                    placementState[charName] = targetZone;
+                }
+            }
+        }
+
+        function checkSolution() {
+            const lvlData = LEVELS[currentLevel];
+            const selectedCulprit = document.getElementById('culprit-select').value;
+            let isCorrect = true;
+
+            if (Object.keys(placementState).length < lvlData.characters.length) {
+                alert("Bitte platziere alle Personen auf dem Lageplan!");
+                return;
+            }
+
+            if (!selectedCulprit) {
+                alert("Bitte wähle aus, wer der Mörder / die Mörderin ist!");
+                return;
+            }
+
+            for (let char of lvlData.characters) {
+                if (placementState[char] !== lvlData.solution[char]) {
+                    isCorrect = false;
+                    break;
+                }
+            }
+
+            if (selectedCulprit !== lvlData.culprit) {
+                isCorrect = false;
+            }
+
+            const modal = document.getElementById('result-modal');
+            const resultText = document.getElementById('result-text');
+
+            if (isCorrect) {
+                resultText.innerText = lvlData.endText;
+                modal.style.display = 'block';
+                modal.scrollIntoView({ behavior: 'smooth' });
+
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+            } else {
+                alert("Die Aufteilung oder die Täterauswahl stimmt noch nicht ganz. Überprüfe die Hinweise noch einmal!");
+                modal.style.display = 'none';
+            }
+        }
+
+        loadLevel(1);
+    </script>
+</body>
+</html>
